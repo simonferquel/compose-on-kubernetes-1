@@ -1,6 +1,7 @@
 package apis
 
 import (
+	apiv1alpha3 "github.com/docker/compose-on-kubernetes/api/compose/v1alpha3"
 	apiv1beta1 "github.com/docker/compose-on-kubernetes/api/compose/v1beta1"
 	apiv1beta2 "github.com/docker/compose-on-kubernetes/api/compose/v1beta2"
 	"github.com/pkg/errors"
@@ -18,20 +19,24 @@ const (
 	StackAPIV1Beta1 = StackVersion("v1beta1")
 	// StackAPIV1Beta2 is returned if it's the most recent version available.
 	StackAPIV1Beta2 = StackVersion("v1beta2")
+	// StackAPIV1Alpha3 is returned if it's the most recent version available, and experimental versions are enabled
+	StackAPIV1Alpha3 = StackVersion("v1alpha3")
 )
 
 // GetStackAPIVersion returns the most recent stack API installed.
-func GetStackAPIVersion(serverGroupsClient discovery.ServerGroupsInterface) (StackVersion, error) {
+func GetStackAPIVersion(serverGroupsClient discovery.ServerGroupsInterface, experimentalEnabled bool) (StackVersion, error) {
 	groups, err := serverGroupsClient.ServerGroups()
 	if err != nil {
 		return "", err
 	}
 
-	return getAPIVersion(groups)
+	return getAPIVersion(groups, experimentalEnabled)
 }
 
-func getAPIVersion(groups *metav1.APIGroupList) (StackVersion, error) {
+func getAPIVersion(groups *metav1.APIGroupList, experimentalEnabled bool) (StackVersion, error) {
 	switch {
+	case experimentalEnabled && findVersion(apiv1alpha3.SchemeGroupVersion, groups.Groups):
+		return StackAPIV1Alpha3, nil
 	case findVersion(apiv1beta2.SchemeGroupVersion, groups.Groups):
 		return StackAPIV1Beta2, nil
 	case findVersion(apiv1beta1.SchemeGroupVersion, groups.Groups):
